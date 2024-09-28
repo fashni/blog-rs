@@ -20,7 +20,6 @@ pub static POSTS: Lazy<Vec<Post>> = Lazy::new(|| {
 
 fn adjust_headings(markdown: &str) -> String {
   let re = Regex::new(r"(?m)^(#+\s)").unwrap();
-    
   re.replace_all(markdown, |caps: &Captures| {
     let pounds = &caps[1];
     format!("#{}", pounds)
@@ -47,7 +46,7 @@ impl Post {
 
     let content = fs::read_to_string(file_name).expect(&format!("Failed to load file: {}", file_name)[..]);
     let mut lines = content.lines();
-  
+
     let date = lines.next().unwrap();
     let date = NaiveDateTime::parse_from_str(date, "%Y-%m-%dT%H:%M:%S%.f")
       .unwrap_or_else(
@@ -65,9 +64,6 @@ impl Post {
     let preview_text = content[..content.len().min(5)].join("\n\n");
     let preview_text = adjust_headings(&preview_text);
     let preview_html = markdown_to_html(&preview_text, &ComrakOptions::default());
-    
-    // let title_html = markdown_to_html(&title, &ComrakOptions::default());
-    // let title_html = title_html[3..title_html.len()-5].to_string(),
 
     Post {
       date,

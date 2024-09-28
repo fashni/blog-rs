@@ -4,7 +4,7 @@ use tiny_http::{Header, Request, Response, StatusCode};
 use crate::config::POSTS_PER_PAGE;
 use crate::post::POSTS;
 use crate::headers;
-use crate::render::{render_homepage, render_post};
+use crate::render::{PageType, render_page};
 
 
 pub fn handle_request(request: Request) {
@@ -19,7 +19,11 @@ pub fn handle_request(request: Request) {
     let end = start + POSTS_PER_PAGE;
     let posts = &POSTS[start..POSTS.len().min(end)];
 
-    let homepage = render_homepage(posts, page, POSTS.len());
+    let homepage = render_page(PageType::HomePage {
+      posts: posts,
+      current_page: page
+    });
+
     let response = Response::from_string(homepage.into_string())
       .with_header(headers::HTML_HEADER.clone());
     request.respond(response).unwrap();
@@ -28,7 +32,8 @@ pub fn handle_request(request: Request) {
   } else {
     let path = &url[1..];
     if let Some(post) = POSTS.iter().find(|p| p.path == path) {
-      let response = Response::from_string(render_post(post).into_string())
+      let postpage = render_page(PageType::PostPage { post: post });
+      let response = Response::from_string(postpage.into_string())
         .with_header(headers::HTML_HEADER.clone());
       request.respond(response).unwrap();
     } else {

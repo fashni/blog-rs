@@ -1,77 +1,75 @@
 use maud::{html, Markup, PreEscaped};
 
 use crate::config::{BLOG_NAME, DESCRIPTION, POSTS_PER_PAGE};
-use crate::post::Post;
+use crate::post::{POSTS, Post};
 
 
-pub fn render_homepage(posts: &[Post], current_page: usize, total_posts: usize) -> Markup {
-  let total_pages = (total_posts as f32 / POSTS_PER_PAGE as f32).ceil() as usize;
+pub enum PageType<'a> {
+  HomePage {
+    posts: &'a [Post],
+    current_page: usize,
+  },
+  PostPage {
+    post: &'a Post,
+  },
+}
+
+pub fn render_page(page: PageType) -> Markup {
   html! {
-    html {
-      head {
-        title { (BLOG_NAME.as_str()) }
-      }
-      body {
-        header {
-          h1 { (BLOG_NAME.as_str()) }
-          p { (DESCRIPTION.as_str()) }
-          nav {}
-        }
-        section {
-          @for post in posts {
-            article {
-              h2 {
-                a href=(format!("/{}", post.path)) { (PreEscaped(&post.title)) }
-              }
-              time { (post.date.format("%d %B %Y, %H:%M")) }
-              div { (PreEscaped(&post.preview)) }
-              a href=(format!("/{}", post.path)) { "Read more" }
-            }
-          }
-          nav {
-            @if current_page < total_pages {
-              a href={(format!("/page/{}", current_page + 1))} { "Older" }
-            }
-            " | "
-            @if current_page > 1 {
-              a href={(format!("/page/{}", current_page - 1))} { "Newer" }
-            }
-          }
-        }
-        footer {
-          hr {}
-          nav {
-            p { "© 2024 fashni" }
-          }
+    head {
+      title {
+        @match &page {
+          PageType::HomePage { .. } => (BLOG_NAME.as_str()),
+          PageType::PostPage { post } => (format!("{} - {}", post.title, BLOG_NAME.as_str())),
         }
       }
     }
-  }
-}
-
-pub fn render_post(post: &Post) -> Markup {
-  html! {
-    html {
-      head {
-        title { (format!("{} - {}", post.title, BLOG_NAME.as_str())) }
+    body {
+      header {
+        h1 { a href={"/"} { (BLOG_NAME.as_str()) } }
+        @match &page {
+          PageType::HomePage { .. } => {
+            p { (DESCRIPTION.as_str()) }
+          },
+          _ =>  {},
+        }
+        nav {}
       }
-      body {
-        header {
-          h1 {
-            a href={"/"} { (BLOG_NAME.as_str()) }
+      @match &page {
+        PageType::HomePage { posts, current_page } => {
+          section {
+            @for post in posts.iter() {
+              article {
+                h2 { a href=(format!("/{}", post.path)) { (PreEscaped(&post.title)) } }
+                time { (post.date.format("%d %B %Y, %H:%M")) }
+                div { (PreEscaped(&post.preview)) }
+                a href=(format!("/{}", post.path)) { "Read more" }
+              }
+            }
+            @let total_pages = (POSTS.len() as f32 / POSTS_PER_PAGE as f32).ceil() as usize;
+            nav {
+              @if *current_page < total_pages {
+                a href={(format!("/page/{}", current_page + 1))} { "Older" }
+              }
+              " | "
+              @if *current_page > 1 {
+                a href={(format!("/page/{}", current_page - 1))} { "Newer" }
+              }
+            }
           }
-          nav {}
-        }
-        article {
-          h2 { (PreEscaped(&post.title)) }
-          time { (post.date.format("%d %B %Y, %H:%M")) }
-          div { (PreEscaped(&post.content)) }
-        }
-        footer {
-          hr {}
-          nav {
-            p { "© 2024 fashni" }
+        },
+        PageType::PostPage { post } => {
+          article {
+            h2 { (PreEscaped(&post.title)) }
+            time { (post.date.format("%d %B %Y, %H:%M")) }
+            div { (PreEscaped(&post.content)) }
           }
+        },
+      }
+      footer {
+        hr {}
+        nav {
+          p { "© 2024 fashni" }
         }
       }
     }
