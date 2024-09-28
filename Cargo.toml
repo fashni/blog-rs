@@ -7,6 +7,4 @@ edition = "2021"
 tiny_http = "0.12"
 maud = "0.26"
 comrak = "0.28"
-once_cell = "1.19"
-chrono = "0.4"
-regex = "1.10"
+time = {version = "0.3", features = ["formatting", "parsing"]}

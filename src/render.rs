@@ -1,7 +1,7 @@
 use maud::{html, Markup, PreEscaped};
 
 use crate::config::{BLOG_NAME, DESCRIPTION, POSTS_PER_PAGE};
-use crate::post::{POSTS, Post};
+use crate::post::{POSTS, Post, TimeType};
 
 
 pub enum PageType<'a> {
@@ -41,7 +41,7 @@ pub fn render_page(page: PageType) -> Markup {
             @for post in posts.iter() {
               article {
                 h2 { a href=(format!("/{}", post.path)) { (PreEscaped(&post.title)) } }
-                time { (post.date.format("%d %B %Y, %H:%M")) }
+                time { (post.format_time(TimeType::Created)) }
                 div { (PreEscaped(&post.preview)) }
                 a href=(format!("/{}", post.path)) { "Read more" }
               }
@@ -61,7 +61,11 @@ pub fn render_page(page: PageType) -> Markup {
         PageType::PostPage { post } => {
           article {
             h2 { (PreEscaped(&post.title)) }
-            time { (post.date.format("%d %B %Y, %H:%M")) }
+            time { (post.format_time(TimeType::Created)) }
+            @if post.time_diff_minutes() > 5.0 {
+              " | "
+              time { "Updated: " (post.format_time(TimeType::Modified)) }
+            }
             div { (PreEscaped(&post.content)) }
           }
         },

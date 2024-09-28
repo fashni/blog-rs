@@ -1,11 +1,9 @@
-use std::{ffi::OsStr, fs};
-use chrono::{NaiveDateTime, Utc};
+use std::{ffi::OsStr, fs, sync::LazyLock};
 use comrak::{markdown_to_html, ComrakOptions};
-use once_cell::sync::Lazy;
-use regex::{Captures, Regex};
+use time::{format_description, OffsetDateTime};
 
 
-pub static POSTS: Lazy<Vec<Post>> = Lazy::new(|| {
+pub static POSTS: LazyLock<Vec<Post>> = LazyLock::new(|| {
   let mut posts: Vec<Post> = Vec::new();
   for entry in fs::read_dir("posts").unwrap() {
     let path = entry.unwrap().path();
@@ -14,22 +12,31 @@ pub static POSTS: Lazy<Vec<Post>> = Lazy::new(|| {
       posts.push(post);
     }
   }
-  posts.sort_by(|a, b| b.date.cmp(&a.date));
+  posts.sort_by(|a, b| b.created_time.cmp(&a.created_time));
   posts
 });
 
+pub enum TimeType {
+  Created,
+  Modified,
+}
+
 fn adjust_headings(markdown: &str) -> String {
-  let re = Regex::new(r"(?m)^(#+\s)").unwrap();
-  re.replace_all(markdown, |caps: &Captures| {
-    let pounds = &caps[1];
-    format!("#{}", pounds)
-  }).to_string()
+  markdown.lines()
+    .map(|line| {
+      if let Some(_stripped) = line.strip_prefix('#') {
+        format!("#{}", line)
+      } else {
+        line.to_string()
+      }
+    }).collect::<Vec<_>>().join("\n")
 }
 
 
 #[derive(Debug)]
 pub struct Post {
-  pub date: NaiveDateTime,
+  pub created_time: OffsetDateTime,
+  pub modified_time: OffsetDateTime,
   pub title: String,
   pub preview: String,
   pub content: String,
@@ -38,23 +45,17 @@ pub struct Post {
 
 impl Post {
   pub fn from_markdown(file_name: &str) -> Self {
-    fn get_path(title: &str) -> String {
-      let re = Regex::new(r"[^\w\s\-]").unwrap();
-      let path = re.replace_all(title, "").to_string();
-      path.to_lowercase().replace(' ', "-")
-    }
+    let content = fs::read_to_string(file_name).unwrap();
+    let metadata = fs::metadata(file_name).unwrap();
 
-    let content = fs::read_to_string(file_name).expect(&format!("Failed to load file: {}", file_name)[..]);
+    let modified_time: OffsetDateTime = metadata.modified().unwrap().into();
+    let created_time: OffsetDateTime = metadata.created().unwrap().into();
+
     let mut lines = content.lines();
-
-    let date = lines.next().unwrap();
-    let date = NaiveDateTime::parse_from_str(date, "%Y-%m-%dT%H:%M:%S%.f")
-      .unwrap_or_else(
-      |_| Utc::now().naive_utc()
-    );
-
     let title = lines.next().unwrap().trim_start_matches("# ").trim_end().to_string();
-    let path = get_path(&title);
+    let path = title.chars()
+      .filter(|c| c.is_alphanumeric() || *c == ' ' || *c == '-')
+      .collect::<String>().to_lowercase().replace(' ', "-");
 
     let content: Vec<&str> = lines.collect();
     let full_text = content.join("\n\n");
@@ -66,11 +67,28 @@ impl Post {
     let preview_html = markdown_to_html(&preview_text, &ComrakOptions::default());
 
     Post {
-      date,
+      created_time,
+      modified_time,
       title,
       preview: preview_html,
       content: full_html,
       path,
     }
+  }
+
+  pub fn format_time(&self, time_type: TimeType) -> String {
+    let format = format_description::parse(
+      "[day] [month repr:long] [year], [hour repr:24]:[minute]"
+    ).unwrap();
+    let ftime = match time_type {
+      TimeType::Created => self.created_time,
+      TimeType::Modified => self.modified_time,
+    };
+    ftime.format(&format).unwrap()
+  }
+
+  pub fn time_diff_minutes(&self) -> f32 {
+    let duration = self.modified_time - self.created_time;
+    duration.whole_seconds() as f32 / 60.0
   }
 }
