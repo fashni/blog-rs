@@ -31,7 +31,7 @@ pub fn handle_request(request: Request) {
     serve_static(&url[1..], request);
   } else {
     let path = &url[1..];
-    if let Some(post) = POSTS.iter().find(|p| p.path == path) {
+    if let Some(post) = POSTS.iter().find(|p| p.path == path && p.published) {
       let postpage = render_page(PageType::PostPage { post: post });
       let response = Response::from_string(postpage.into_string())
         .with_header(headers::HTML_HEADER.clone());

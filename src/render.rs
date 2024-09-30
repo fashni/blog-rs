@@ -38,7 +38,7 @@ pub fn render_page(page: PageType) -> Markup {
       @match &page {
         PageType::HomePage { posts, current_page } => {
           section {
-            @for post in posts.iter() {
+            @for post in posts.iter().filter(|p| p.published) {
               article {
                 h2 { a href=(format!("/{}", post.path)) { (PreEscaped(&post.title)) } }
                 time { (post.format_time(TimeType::Created)) }

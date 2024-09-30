@@ -1,4 +1,4 @@
-use std::{ffi::OsStr, fs, sync::LazyLock};
+use std::{collections::HashMap, ffi::OsStr, fs, sync::LazyLock};
 use comrak::{markdown_to_html, ComrakOptions};
 use time::{format_description, OffsetDateTime};
 
@@ -16,20 +16,10 @@ pub static POSTS: LazyLock<Vec<Post>> = LazyLock::new(|| {
   posts
 });
 
+
 pub enum TimeType {
   Created,
   Modified,
-}
-
-fn adjust_headings(markdown: &str) -> String {
-  markdown.lines()
-    .map(|line| {
-      if let Some(_stripped) = line.strip_prefix('#') {
-        format!("#{}", line)
-      } else {
-        line.to_string()
-      }
-    }).collect::<Vec<_>>().join("\n")
 }
 
 
@@ -41,38 +31,31 @@ pub struct Post {
   pub preview: String,
   pub content: String,
   pub path: String,
+  pub published: bool,
 }
 
 impl Post {
   pub fn from_markdown(file_name: &str) -> Self {
-    let content = fs::read_to_string(file_name).unwrap();
-    let metadata = fs::metadata(file_name).unwrap();
+    let raw_content = fs::read_to_string(file_name).unwrap();
+    let parts: Vec<&str>= raw_content.splitn(3, "---\n").collect();
+    if parts.len() != 3 {
+      panic!("The file {} is not in the correct format", file_name);
+    }
 
-    let modified_time: OffsetDateTime = metadata.modified().unwrap().into();
-    let created_time: OffsetDateTime = metadata.created().unwrap().into();
-
-    let mut lines = content.lines();
-    let title = lines.next().unwrap().trim_start_matches("# ").trim_end().to_string();
+    let (title, created_time, modified_time, published) = Self::parse_metadata(parts[1]);
+    let (preview, content) = Self::parse_content(parts[2]);
     let path = title.chars()
       .filter(|c| c.is_alphanumeric() || *c == ' ' || *c == '-')
       .collect::<String>().to_lowercase().replace(' ', "-");
-
-    let content: Vec<&str> = lines.collect();
-    let full_text = content.join("\n\n");
-    let full_text = adjust_headings(&full_text);
-    let full_html = markdown_to_html(&full_text, &ComrakOptions::default());
-
-    let preview_text = content[..content.len().min(5)].join("\n\n");
-    let preview_text = adjust_headings(&preview_text);
-    let preview_html = markdown_to_html(&preview_text, &ComrakOptions::default());
 
     Post {
       created_time,
       modified_time,
       title,
-      preview: preview_html,
-      content: full_html,
+      preview,
+      content,
       path,
+      published,
     }
   }
 
@@ -90,5 +73,47 @@ impl Post {
   pub fn time_diff_minutes(&self) -> f32 {
     let duration = self.modified_time - self.created_time;
     duration.whole_seconds() as f32 / 60.0
+  }
+
+  fn adjust_headings(markdown: &str) -> String {
+    markdown.lines()
+      .map(|line| {
+        if let Some(_stripped) = line.strip_prefix('#') {
+          format!("#{}", line)
+        } else {
+          line.to_string()
+        }
+      }).collect::<Vec<_>>().join("\n")
+  }
+
+  fn parse_metadata(header: &str) -> (String, OffsetDateTime, OffsetDateTime, bool) {
+    let metadata: HashMap<String, String> = header.lines().filter_map(|line| {
+      let mut split = line.splitn(2, ": ");
+      if let (Some(key), Some(val)) = (split.next(), split.next()) {
+        Some((key.trim().to_string(), val.trim().to_string().replace("\"", "")))
+      } else {
+        None
+      }
+    }).collect();
+
+    let title = metadata.get("title").expect("Missing title").to_string();
+    let published = metadata.get("published").map(|p| p == "true").unwrap_or(false);
+    let created_time = metadata.get("created_time").and_then(
+      |time_str| OffsetDateTime::parse(time_str, &format_description::well_known::Rfc3339).ok()
+    ).unwrap_or(OffsetDateTime::now_utc());
+    let modified_time = metadata.get("modified_time").and_then(
+      |time_str| OffsetDateTime::parse(time_str, &format_description::well_known::Rfc3339).ok()
+    ).unwrap_or(OffsetDateTime::now_utc());
+
+    (title, created_time, modified_time, published)
+  }
+
+  fn parse_content(post_content: &str) -> (String, String) {
+    let paragraphs: Vec<&str> = post_content.split("\n\n").collect();
+    let preview_text = Self::adjust_headings(&paragraphs[..paragraphs.len().min(5)].join("\n\n"));
+    let full_text = Self::adjust_headings(post_content);
+    let preview_html = markdown_to_html(&preview_text, &ComrakOptions::default());
+    let full_html = markdown_to_html(&full_text, &ComrakOptions::default());
+    (preview_html, full_html)
   }
 }
