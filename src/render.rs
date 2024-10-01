@@ -46,7 +46,7 @@ pub fn render_page(page: PageType) -> Markup {
                 a href=(format!("/{}", post.path)) { "Read more" }
               }
             }
-            @let total_pages = (POSTS.len() as f32 / POSTS_PER_PAGE as f32).ceil() as usize;
+            @let total_pages = (POSTS.read().unwrap().len() as f32 / POSTS_PER_PAGE as f32).ceil() as usize;
             nav {
               @if *current_page < total_pages {
                 a href={(format!("/page/{}", current_page + 1))} { "Older" }

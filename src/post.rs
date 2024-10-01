@@ -1,20 +1,18 @@
-use std::{collections::HashMap, ffi::OsStr, fs, sync::LazyLock};
+use std::{collections::HashMap, fs};
+use std::sync::{Arc, RwLock, LazyLock};
 use comrak::{markdown_to_html, ComrakOptions};
 use time::{format_description, OffsetDateTime};
 
 
-pub static POSTS: LazyLock<Vec<Post>> = LazyLock::new(|| {
-  let mut posts: Vec<Post> = Vec::new();
-  for entry in fs::read_dir("posts").unwrap() {
-    let path = entry.unwrap().path();
-    if path.is_file() && path.extension().unwrap_or(OsStr::new("")) == "md" {
-      let post = Post::from_markdown(path.to_str().unwrap());
-      posts.push(post);
-    }
-  }
-  posts.sort_by(|a, b| b.created_time.cmp(&a.created_time));
-  posts
+pub static POSTS: LazyLock<Arc<RwLock<Vec<Post>>>> = LazyLock::new(|| {
+  Arc::new(RwLock::new(Post::load_posts()))
 });
+
+
+pub fn reload_posts() {
+  let mut posts = POSTS.write().unwrap();
+  *posts = Post::load_posts();
+}
 
 
 pub enum TimeType {
@@ -35,6 +33,21 @@ pub struct Post {
 }
 
 impl Post {
+  fn load_posts() -> Vec<Post> {
+    let mut posts: Vec<Post> = Vec::new();
+    let posts_dir = fs::read_dir("posts").expect("Failed to read posts dir");
+    for entry in posts_dir {
+      let path = entry.unwrap().path();
+      let ext = path.extension().and_then(|ext| ext.to_str());
+      if path.is_file() && ext == Some("md") {
+        let post = Post::from_markdown(path.to_str().unwrap());
+        posts.push(post);
+      }
+    }
+    posts.sort_by(|a, b| b.created_time.cmp(&a.created_time));
+    posts
+  }
+
   pub fn from_markdown(file_name: &str) -> Self {
     let raw_content = fs::read_to_string(file_name).unwrap();
     let parts: Vec<&str>= raw_content.splitn(3, "---\n").collect();

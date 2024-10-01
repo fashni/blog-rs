@@ -15,9 +15,10 @@ pub fn handle_request(request: Request) {
       url.trim_start_matches("/page/").parse::<usize>().unwrap_or(1)
     };
 
+    let all_posts = POSTS.read().unwrap();
     let start = (page - 1) * POSTS_PER_PAGE;
     let end = start + POSTS_PER_PAGE;
-    let posts = &POSTS[start..POSTS.len().min(end)];
+    let posts = &all_posts[start..all_posts.len().min(end)];
 
     let homepage = render_page(PageType::HomePage {
       posts: posts,
@@ -31,7 +32,7 @@ pub fn handle_request(request: Request) {
     serve_static(&url[1..], request);
   } else {
     let path = &url[1..];
-    if let Some(post) = POSTS.iter().find(|p| p.path == path && p.published) {
+    if let Some(post) = POSTS.read().unwrap().iter().find(|p| p.path == path && p.published) {
       let postpage = render_page(PageType::PostPage { post: post });
       let response = Response::from_string(postpage.into_string())
         .with_header(headers::HTML_HEADER.clone());
