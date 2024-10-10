@@ -6,7 +6,7 @@ mod render;
 
 use std::{io, process, thread};
 use tiny_http::Server;
-use config::PORT;
+use config::CONFIG;
 use post::reload_posts;
 use routes::handle_request;
 
@@ -18,8 +18,8 @@ fn main() {
 }
 
 fn start_server() {
-  let server = Server::http(format!("0.0.0.0:{}", PORT)).unwrap();
-  println!("Server is running on http://localhost:{}", PORT);
+  let server = Server::http(format!("0.0.0.0:{}", CONFIG.port)).unwrap();
+  println!("Server is running on http://localhost:{}", CONFIG.port);
 
   for request in server.incoming_requests() {
     println!("{}", request.url());

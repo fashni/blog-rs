@@ -1,7 +1,26 @@
 use std::sync::LazyLock;
 
 
-pub const PORT: usize = 8000;
-pub const POSTS_PER_PAGE: usize = 5;
-pub static BLOG_NAME: LazyLock<String> = LazyLock::new(|| String::from("The Murky Lens"));
-pub static DESCRIPTION: LazyLock<String> = LazyLock::new(|| String::from("Finding some clarity in the maze of self-expression through a murky lens"));
+pub static CONFIG: LazyLock<Config> = LazyLock::new(||
+  Config::default()
+);
+
+pub struct Config {
+  pub blog_name: String,
+  pub description: String,
+  pub author: String,
+  pub port: u16,
+  pub posts_per_page: usize,
+}
+
+impl Config {
+  pub fn default() -> Self {
+    Config {
+      blog_name: String::from("The Murky Lens"),
+      description: String::from("Finding some clarity in the maze of self-expression through a murky lens"),
+      author: String::from("fashni"),
+      port: 8000,
+      posts_per_page: 5,
+    }
+  }
+}

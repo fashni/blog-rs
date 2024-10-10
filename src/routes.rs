@@ -1,7 +1,7 @@
 use std::{fs, path::Path};
 use tiny_http::{Header, Request, Response, StatusCode};
 
-use crate::config::POSTS_PER_PAGE;
+use crate::config::CONFIG;
 use crate::post::POSTS;
 use crate::headers;
 use crate::render::{PageType, render_page};
@@ -16,8 +16,8 @@ pub fn handle_request(request: Request) {
     };
 
     let all_posts = POSTS.read().unwrap();
-    let start = (page - 1) * POSTS_PER_PAGE;
-    let end = start + POSTS_PER_PAGE;
+    let start = (page - 1) * CONFIG.posts_per_page;
+    let end = start + CONFIG.posts_per_page;
     let posts = &all_posts[start..all_posts.len().min(end)];
 
     let homepage = render_page(PageType::HomePage {

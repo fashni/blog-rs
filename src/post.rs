@@ -86,15 +86,19 @@ impl Post {
     })
   }
 
-  pub fn format_time(&self, time_type: TimeType) -> String {
-    let format = format_description::parse(
-      "[day] [month repr:long] [year], [hour repr:24]:[minute]"
-    ).unwrap();
+  pub fn format_time(&self, time_type: TimeType, long_format: bool) -> String {
     let ftime = match time_type {
       TimeType::Created => self.created_time,
       TimeType::Modified => self.modified_time,
     };
-    ftime.format(&format).unwrap()
+    if long_format {
+      let format = format_description::parse(
+        "[day] [month repr:long] [year], [hour repr:24]:[minute]"
+      ).unwrap();
+      ftime.format(&format).unwrap()
+    } else {
+      ftime.format(&format_description::well_known::Rfc3339).unwrap()
+    }
   }
 
   pub fn time_diff_minutes(&self) -> f32 {
