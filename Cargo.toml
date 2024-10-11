@@ -1,7 +1,13 @@
 [package]
-name = "blog"
+name = "blog-rs"
 version = "0.1.0"
 edition = "2021"
+
+[profile.release]
+lto = "fat"
+opt-level = "z"
+strip = true
+panic = "abort"
 
 [dependencies]
 tiny_http = "0.12"
