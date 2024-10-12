@@ -59,12 +59,14 @@ pub fn render_page(page: PageType) -> Markup {
                 }
               }
               @let total_pages = (POSTS.read().unwrap().len() as f32 / CONFIG.posts_per_page as f32).ceil() as usize;
-              nav.content-container #paging {
-                @if *current_page < total_pages {
-                  a.older href={(format!("/page/{}", current_page + 1))} { "⇠ Older" }
-                }
-                @if *current_page > 1 {
-                  a.newer href={(format!("/page/{}", current_page - 1))} { "Newer ⇢" }
+              @if total_pages > 1 {
+                nav.content-container #paging {
+                  @if *current_page < total_pages {
+                    a.older href={(format!("/page/{}", current_page + 1))} { "⇠ Older" }
+                  }
+                  @if *current_page > 1 {
+                    a.newer href={(format!("/page/{}", current_page - 1))} { "Newer ⇢" }
+                  }
                 }
               }
             }

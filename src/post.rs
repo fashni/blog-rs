@@ -143,7 +143,7 @@ impl Post {
 
   fn parse_content(post_content: &str) -> (String, String) {
     let paragraphs: Vec<&str> = post_content.split("\n\n").collect();
-    let preview_text = Self::adjust_headings(&paragraphs[..paragraphs.len().min(5)].join("\n\n"));
+    let preview_text = Self::adjust_headings(&paragraphs[..paragraphs.len().min(3)].join("\n\n"));
     let full_text = Self::adjust_headings(post_content);
     let preview_html = markdown_to_html(&preview_text, &ComrakOptions::default());
     let full_html = markdown_to_html(&full_text, &ComrakOptions::default());
